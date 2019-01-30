@@ -1,7 +1,7 @@
 
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "temp-hist-challenge", "temp-hist-challenge.csproj", "{F3C688F0-B62B-46FF-A9E6-0657F4D1C621}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CreateWeatherHistogram", "src\CreateWeatherHistogram.csproj", "{F3C688F0-B62B-46FF-A9E6-0657F4D1C621}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
