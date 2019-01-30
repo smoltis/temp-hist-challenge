@@ -1,10 +1,5 @@
 ﻿namespace TemperatureHistogramChallenge.Models
 {
-    //public class IpStackResponseDto
-    //{
-
-    //}
-
     public class IpStackResponseDto
     {
         public string ip { get; set; }

@@ -43,7 +43,7 @@ namespace TemperatureHistogramChallenge.Services
 
                     //TODO: watch out for collisions
                     // 1. resolve IP to location
-                    var location = _locationService.Run(tempLine.IP).Result;
+                    var location = _locationService.Run(tempLine.Ip).Result;
                     if (location is null)
                         return localTempData;
                     // 2. get the temperature forecast for tomorrow in the resolved location
@@ -54,7 +54,7 @@ namespace TemperatureHistogramChallenge.Services
                     if (!localTempData.ContainsKey(tKey))
                     {
                         //var val = Tuple.Create(tempLine.Date, tempLine.IP, 1);
-                        _logger.LogDebug($"{tempLine.Date}:{tempLine.IP}:{location}:{tKey}");
+                        _logger.LogDebug($"{tempLine.Date}:{tempLine.Ip}:{location}:{tKey}");
                         localTempData[tKey] = 1;
                         //_logger.LogDebug(localTempData.TryAdd(tKey, 1) ? "Added" : "Failed");
                     }
@@ -93,14 +93,13 @@ namespace TemperatureHistogramChallenge.Services
 
             return globalTemperatureData
                 .OrderBy(kv => kv.Key)
-                .ToDictionary(kv => kv.Key, kv => kv.Value); ;
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
         }
 
         public bool ValidateIPv4(string ipString)
         {
             if (ipString.Count(c => c == '.') != 3) return false;
-            IPAddress address;
-            return IPAddress.TryParse(ipString, out address);
+            return IPAddress.TryParse(ipString, out var address);
         }
 
         public TemperatureFileLine ParseLine(string line)
@@ -128,7 +127,7 @@ namespace TemperatureHistogramChallenge.Services
                 {
 
                     Date = dt.AddDays(1),
-                    IP = ipAddr
+                    Ip = ipAddr
                 };
         }
     }

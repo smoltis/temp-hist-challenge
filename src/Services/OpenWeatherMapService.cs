@@ -40,16 +40,5 @@ namespace TemperatureHistogramChallenge.Services
             // TODO: validate temperature, if null consider failed API lookup, temperature is in Fahrenheit
             return weather.list[0].main.temp_max;
         }
-
-        public static IWeatherStats GetTempForecast(DateTime date, string location)
-        {
-            // http://maps.openweathermap.org/maps/2.0/weather/TA2/{z}/{x}/{y}?date={}&appid={api_key}
-            // z - Number of zoom level
-            // x - Number of x tile coordinate
-            // y - Number of y tile coordinate
-            // date - Date and time of (Unix time, UTC) i.e. 1527811200
-
-            return null;
-        }
     }
 }

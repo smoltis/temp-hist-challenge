@@ -1,6 +1,4 @@
-﻿using System.IO;
-
-namespace TemperatureHistogramChallenge.Services
+﻿namespace TemperatureHistogramChallenge.Services
 {
     internal interface IHistogramService
     {

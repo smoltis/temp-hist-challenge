@@ -5,16 +5,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using TemperatureHistogramChallenge.Services;
-//using Microsoft.Extensions.Configuration.Json;
-//using Microsoft.Extensions.Configuration.EnvironmentVariables;
-
 
 namespace TemperatureHistogramChallenge
 {
     class Program
     {
-        public static IConfiguration Configuration;
-
         public static void Main(string[] args)
         { 
                 #region DependencyInjection
@@ -90,14 +85,14 @@ namespace TemperatureHistogramChallenge
                 .Configure<LoggerFilterOptions>(options => options.MinLevel = LogLevel.Information);
 
             // Build configuration
-            Configuration = new ConfigurationBuilder()
+            IConfiguration configuration = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.json", false)
                 .AddEnvironmentVariables()
                 .Build();
 
-            // Add access to generic IConfigurationRoot
-            serviceCollection.AddSingleton<IConfiguration>(Configuration);
+            // Add access to IConfiguration
+            serviceCollection.AddSingleton(configuration);
 
             // main service
             serviceCollection.AddSingleton<IHistogramService,HistogramService>();

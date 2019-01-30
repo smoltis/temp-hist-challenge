@@ -1,10 +1,5 @@
 ﻿namespace TemperatureHistogramChallenge.Models
 {
-    //public class OpenWeatherMapResponseDto
-    //{
-
-    //}
-
     public class OpenWeatherMapResponseDto
     {
         public string cod { get; set; }
