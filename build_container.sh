@@ -1,1 +1,0 @@
-docker build -t temp-hist-challenge .

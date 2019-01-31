@@ -1,0 +1,43 @@
+#!/bin/bash
+
+POSITIONAL=()
+while [[ $# -gt 0 ]]
+do
+key="$1"
+
+case $key in
+    -i|--input)
+    INPUT="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    -o|--output)
+    OUTPUT="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    -n|--numOfBuckets)
+    BUCKETS="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    *)    # unknown option
+    POSITIONAL+=("$1") # save it in an array for later
+    shift # past argument
+    ;;
+esac
+done
+set -- "${POSITIONAL[@]}" # restore positional parameters
+
+relpath=`dirname "${INPUT}"`
+part1=`cd "${relpath}";pwd` 
+part2=`basename "${INPUT}"`
+
+echo INPUT PATH ABS         = "${part1}"
+echo INPUT FILE NAME        = "${part2}"
+echo OUTPUT FILE NAME       = "${OUTPUT}"
+echo NUMBER OF BUCKETS      = "${BUCKETS}"
+
+docker-compose build
+docker-compose run --rm -w /app -v "${part1}":/app/data app --input "./data/${part2}" --output "./data/${OUTPUT}" --numOfBuckets "${BUCKETS}"
+docker-compose stop redis
