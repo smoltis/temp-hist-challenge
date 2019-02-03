@@ -5,29 +5,33 @@ namespace TemperatureHistogramChallenge.Models
 {
     public class ApiStats : IApiStats
     {
+        private object Semaphore => new object();
+
         private int TotalCalls { get; set; }
 
         private Dictionary<ApiFailReason, int> FailReasons => new Dictionary<ApiFailReason, int>();
 
         public void Add(ApiFailReason apiFailReason)
         {
-            if (!FailReasons.ContainsKey(apiFailReason))
+            lock (Semaphore)
             {
-                FailReasons[apiFailReason] = 1;
+                if (!FailReasons.ContainsKey(apiFailReason))
+                {
+                    FailReasons[apiFailReason] = 1;
+                }
+                else 
+                {
+                    FailReasons[apiFailReason]++;
+                }
+                TotalCalls++;
             }
-            else 
-            {
-                FailReasons[apiFailReason]++;
-            }
-            TotalCalls++;
         }
 
         public List<string> Summary()
         {
-            if (TotalCalls > 0)
-                return FailReasons.Select(kv => $"{kv.Key.ToString()}: {kv.Value} ({100 * kv.Value / TotalCalls:2d})").ToList();
-            else
-                return new List<string>();
+            return (TotalCalls > 0)
+                ? FailReasons.Select(kv => $"{kv.Key.ToString()}: {kv.Value} ({100 * kv.Value / TotalCalls:2d})").ToList()
+                : new List<string>();
         }
     }
 
@@ -35,9 +39,6 @@ namespace TemperatureHistogramChallenge.Models
     {
         MissingData,
         FailedLookup,
-        ConnectionError,
-        FreeTierLimitExceeded,
-        InvalidAccessKey,
-        Other
+        ConnectionError
     }
 }

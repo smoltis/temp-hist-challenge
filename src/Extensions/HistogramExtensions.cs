@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using TemperatureHistogramChallenge.Models;
 
@@ -18,8 +17,8 @@ namespace TemperatureHistogramChallenge.Extensions
             for (int i = 0; i < totalBuckets; i++)
             {
                 var bucket = new Bucket();
-                bucket.bucketMin = min + i * bucketSize;
-                bucket.bucketMax = bucket.bucketMin + bucketSize;
+                bucket.bucketMin = (min + i * bucketSize).Truncate(1);
+                bucket.bucketMax = (bucket.bucketMin + bucketSize).Truncate(1);
                 bucket.Count = source.Where(kv => (kv.Key >= bucket.bucketMin && kv.Key < bucket.bucketMax)).Sum(kv => kv.Value);
                 buckets.Add(bucket);
             }

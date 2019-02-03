@@ -61,7 +61,9 @@ namespace TemperatureHistogramChallenge
 
                     var numOfBuckets = optionNumBuckets.HasValue() ? optionNumBuckets.ParsedValue : 1;
 
-                    logger.LogInformation($"In: {input}, Out: {output}, Buckets: {numOfBuckets}");
+                    logger.LogInformation($"Input: {input}");
+                    logger.LogInformation($"Out: {output}");
+                    logger.LogInformation($"Buckets: {numOfBuckets}");
 
                     // begin processing
                     serviceProvider.GetService<IHistogramService>().Create(input, output, numOfBuckets);

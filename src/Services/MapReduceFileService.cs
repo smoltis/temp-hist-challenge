@@ -5,15 +5,16 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using StackExchange.Redis;
 using TemperatureHistogramChallenge.Models;
 
 namespace TemperatureHistogramChallenge.Services
 {
     public class MapReduceFileService : IInputFileService
     {
-        private readonly ILogger<MapReduceFileService> _logger;
-        private readonly ILocationService _locationService;
-        private readonly IWeatherService _weatherService;
+        private readonly ILogger<MapReduceFileService> logger;
+        private readonly ILocationService locationService;
+        private readonly IWeatherService weatherService;
         private readonly IApiStats apiStats;
 
         public MapReduceFileService(ILogger<MapReduceFileService> logger, 
@@ -21,9 +22,9 @@ namespace TemperatureHistogramChallenge.Services
             IWeatherService weatherService,
             IApiStats apiStats)
         {
-            _logger = logger;
-            _locationService = locationService;
-            _weatherService = weatherService;
+            this.logger = logger;
+            this.locationService = locationService;
+            this.weatherService = weatherService;
             this.apiStats = apiStats;
         }
 
@@ -38,8 +39,8 @@ namespace TemperatureHistogramChallenge.Services
                 new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
                 // Initializer:  create task-local storage:
                 () => new Dictionary<float, int>(),
-                // Loop-body: mapping our results into the local storage
-                 (line, _, localTempData) => { return Map(line, localTempData); },
+                // Loop-body: mapping results into the local storage
+                (line, _, localTempData) => { return Map(line, localTempData); },
                 // Finalizer: reduce(merge) individual local storage into global storage
                 (localDict) => Reduce(localDict, globalTemperatureData)
             );
@@ -78,14 +79,11 @@ namespace TemperatureHistogramChallenge.Services
             }
             try
             {
-                // TODO: do task continuation only when location succeeded
                 // get locations and weather forecast here to save memory
-                _logger.LogDebug($"Read from file {tempLine.Ip}");
+                logger.LogDebug($"Read from file {tempLine.Ip}");
 
-
-
-                var weatherAtLocationTask = _locationService.Run(tempLine.Ip)
-                    .ContinueWith(t => { return _weatherService.WeatherForecast(t.Result).Result; }
+                var weatherAtLocationTask = locationService.Run(tempLine.Ip)
+                    .ContinueWith(t => { return weatherService.WeatherForecast(t.Result).Result; }
                         ,TaskContinuationOptions.OnlyOnRanToCompletion);
 
                 var tKey = weatherAtLocationTask.Result;
@@ -102,8 +100,15 @@ namespace TemperatureHistogramChallenge.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Exception: ");
-                return localTempData;
+                if (ex.InnerException.InnerException.HelpLink == "https://stackexchange.github.io/StackExchange.Redis/Timeouts")
+                {
+                    logger.LogWarning($"Redis timeout exception: {ex.InnerException.InnerException.Message}");
+                }
+                else
+                {
+                    apiStats.Add(ApiFailReason.FailedLookup);
+                    logger.LogError(ex, "Exception: ");
+                }
             }
             return localTempData;
         }

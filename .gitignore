@@ -331,3 +331,6 @@ ASALocalRun/
 
 # Exclude Visual Studio Code files
 .vscode/
+
+# Mac cache files
+.DS_Store

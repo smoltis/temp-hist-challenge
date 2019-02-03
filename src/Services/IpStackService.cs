@@ -1,10 +1,7 @@
 ﻿using System;
-using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using StackExchange.Redis;
 using TemperatureHistogramChallenge.Models;
 using IpStack;
@@ -44,7 +41,7 @@ namespace TemperatureHistogramChallenge.Services
             }
             else
             {
-                logger.LogDebug("From IPStack cache");
+                logger.LogDebug("IPStack cache hit");
                 result = cachedResult;
             }
             return result;
@@ -56,37 +53,6 @@ namespace TemperatureHistogramChallenge.Services
             {
                 // Get single IP address with defaults
                 IpAddressDetails location = client.GetIpAddressDetails(ip);
-                /*
-                var response = await _httpClient.GetAsync($"{ip}?access_key={_appkey}");
-                response.EnsureSuccessStatusCode();
-                var content = await response.Content.ReadAsStringAsync();
-                // TODO: try to deserialize only tags of interest
-                var location = JsonConvert.DeserializeObject<IpStackResponseDto>(content);
-                // TODO: if location.city is null then consider failed API lookup
-                if (location is null)
-                {
-                    logger.LogWarning($"Location deserialization failed, content: {location}");
-                }
-                if (location is null)
-                {
-                    var error = JsonConvert.DeserializeObject<IpStackError>(content);
-                    if (error != null && error.error.type == "missing_access_key")
-                    {
-                        apiStats.Add(ApiFailReason.InvalidAccessKey);
-                    }
-                    else
-                    {
-                        logger.LogWarning($"Location API response not recognised: {content}");
-                    }
-                }
-                if (string.IsNullOrEmpty(location.city))
-                {
-                        // TODO: add missing data to failed API call statistics
-                        apiStats.Add(ApiFailReason.FailedLookup);
-                    return null;
-                }
-                */
-                
                 return string.Join(',', location.Latitude.ToString(), location.Longitude.ToString());
             }
             catch (Exception e)
@@ -94,10 +60,6 @@ namespace TemperatureHistogramChallenge.Services
                 logger.LogError(e, "Error in IpStackService: ");
                 if (e.Message == "Device not configured")
                     apiStats.Add(ApiFailReason.ConnectionError);
-                else
-                {
-                    logger.LogWarning($"Location http exception not recognised: {e.Message}");
-                }
                 return null;
             }
             //catch (Exception ex)
