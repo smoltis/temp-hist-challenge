@@ -14,86 +14,98 @@ namespace TemperatureHistogramChallenge.Services
         private readonly ILogger<MapReduceFileService> _logger;
         private readonly ILocationService _locationService;
         private readonly IWeatherService _weatherService;
+        private readonly IApiStats apiStats;
 
-        public MapReduceFileService(ILogger<MapReduceFileService> logger, ILocationService locationService,IWeatherService weatherService)
+        public MapReduceFileService(ILogger<MapReduceFileService> logger, 
+            ILocationService locationService, 
+            IWeatherService weatherService,
+            IApiStats apiStats)
         {
             _logger = logger;
             _locationService = locationService;
             _weatherService = weatherService;
+            this.apiStats = apiStats;
         }
-        //TODO: resolve locations here to reduce the size of data transfer between classes
-        public IDictionary<double, int> ProcessFile(string input)
+
+        public IDictionary<float, int> ProcessFile(string input)
         {
-            //var globalTemperatureData = new Dictionary<int, Tuple<DateTime, string, int>>();
-            var globalTemperatureData = new Dictionary<double, int>();
+            var globalTemperatureData = new SortedDictionary<float, int>();
 
             #region MapReduce
 
             Parallel.ForEach(File.ReadLines(input),
+                // Set up MaxDOP
                 new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
                 // Initializer:  create task-local storage:
-                () => new Dictionary<double, int>(),
-
+                () => new Dictionary<float, int>(),
                 // Loop-body: mapping our results into the local storage
-                 (line, _, localTempData) =>
-                {
-                    var tempLine = ParseLine(line);
-                    if (tempLine == null)
-                        return localTempData;
-
-                    //TODO: watch out for collisions
-                    // 1. resolve IP to location
-                    var location = _locationService.Run(tempLine.Ip).Result;
-                    if (location is null)
-                        return localTempData;
-                    // 2. get the temperature forecast for tomorrow in the resolved location
-
-                    // TODO: add unsuccessful response handling here
-                    var tKey = _weatherService.WeatherForecast(tempLine.Date, location).Result;
-
-                    if (!localTempData.ContainsKey(tKey))
-                    {
-                        //var val = Tuple.Create(tempLine.Date, tempLine.IP, 1);
-                        _logger.LogDebug($"{tempLine.Date}:{tempLine.Ip}:{location}:{tKey}");
-                        localTempData[tKey] = 1;
-                        //_logger.LogDebug(localTempData.TryAdd(tKey, 1) ? "Added" : "Failed");
-                    }
-                    else
-                    {
-                        //var newVal = localTempData[tKey].Item3;
-                        //var tuple = Tuple.Create(tempLine.Date, tempLine.IP, newVal+1);
-                        localTempData[tKey]++;
-                    }
-
-                    return localTempData;
-                },
+                 (line, _, localTempData) => { return Map(line, localTempData); },
                 // Finalizer: reduce(merge) individual local storage into global storage
-                (localDict) =>
-                {
-                    //TODO: investigate whether blocking collection can be used
-                    lock (globalTemperatureData)
-                    {
-                        foreach (var key in localDict.Keys)
-                        {
-                            var value = localDict[key];
-                            if (!globalTemperatureData.ContainsKey(key))
-                            {
-                                globalTemperatureData[key] = value;
-                            }
-                            else
-                            {
-                                globalTemperatureData[key] += value;
-                            }
-                        }
-                    }
-                }
+                (localDict) => Reduce(localDict, globalTemperatureData)
             );
 
             #endregion
 
-            return globalTemperatureData
-                .OrderBy(kv => kv.Key)
-                .ToDictionary(kv => kv.Key, kv => kv.Value);
+            return globalTemperatureData;
+        }
+
+        private static void Reduce(Dictionary<float, int> localDict, SortedDictionary<float, int> globalTemperatureData)
+        {
+            lock (globalTemperatureData)
+            {
+                foreach (var key in localDict.Keys)
+                {
+                    var value = localDict[key];
+                    if (!globalTemperatureData.ContainsKey(key))
+                    {
+                        globalTemperatureData[key] = value;
+                    }
+                    else
+                    {
+                        globalTemperatureData[key] += value;
+                    }
+                }
+            }
+        }
+
+        private Dictionary<float, int> Map(string line, Dictionary<float, int> localTempData)
+        {
+            var tempLine = ParseLine(line);
+            if (tempLine == null)
+            {
+                apiStats.Add(ApiFailReason.MissingData);
+                return localTempData;
+            }
+            try
+            {
+                // TODO: do task continuation only when location succeeded
+                // get locations and weather forecast here to save memory
+                _logger.LogDebug($"Read from file {tempLine.Ip}");
+
+
+
+                var weatherAtLocationTask = _locationService.Run(tempLine.Ip)
+                    .ContinueWith(t => { return _weatherService.WeatherForecast(t.Result).Result; }
+                        ,TaskContinuationOptions.OnlyOnRanToCompletion);
+
+                var tKey = weatherAtLocationTask.Result;
+
+                if (!localTempData.ContainsKey(tKey))
+                {
+                    localTempData[tKey] = 1;
+                }
+                else
+                {
+                    localTempData[tKey]++;
+                }
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception: ");
+                return localTempData;
+            }
+            return localTempData;
         }
 
         public bool ValidateIPv4(string ipString)
@@ -104,20 +116,13 @@ namespace TemperatureHistogramChallenge.Services
 
         public TemperatureFileLine ParseLine(string line)
         {
-            //TODO: add data cleansing(scrubbing) here
             var columns = line.Split('\t');
 
             // column count validation
             if (columns.Length < 23)
                 return null;
 
-            // date validation
-            //TODO: find out TZ for input data
-            DateTime dt;
-            if (!DateTime.TryParse(columns[0].Substring(0, 10), out dt))
-                return null;
-
-            var ipAddr = columns[23].Trim();
+            var ipAddr = columns[23].Trim().Replace(" ",string.Empty);
             // ip address validation
             if (!ValidateIPv4(ipAddr))
                 return null;
@@ -125,8 +130,6 @@ namespace TemperatureHistogramChallenge.Services
             return 
                 new TemperatureFileLine()
                 {
-
-                    Date = dt.AddDays(1),
                     Ip = ipAddr
                 };
         }

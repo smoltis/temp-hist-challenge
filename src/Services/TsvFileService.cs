@@ -11,6 +11,7 @@ namespace TemperatureHistogramChallenge.Services
             using (var writer = new StreamWriter(outFile))
             using (var csv = new CsvWriter(writer))
             {
+                csv.Configuration.Delimiter = "\t";
                 csv.WriteRecords(lines);
             }
         }

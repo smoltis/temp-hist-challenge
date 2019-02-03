@@ -4,6 +4,8 @@ using McMaster.Extensions.CommandLineUtils;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using StackExchange.Redis;
+using TemperatureHistogramChallenge.Models;
 using TemperatureHistogramChallenge.Services;
 
 namespace TemperatureHistogramChallenge
@@ -32,7 +34,7 @@ namespace TemperatureHistogramChallenge
             {
 
                 var app = new CommandLineApplication();
-
+                app.Name = "CreateWeatherHistogram";
                 app.HelpOption();
 
                 var optionInput = app.Option("-i|--input <INPUT>", "Required. Input temperature file",
@@ -40,7 +42,7 @@ namespace TemperatureHistogramChallenge
                     .IsRequired()
                     .Accepts(v => v.ExistingFile());
 
-                var optionOutput = app.Option("-o|--output <OUTPUT>", "Output histogram file",
+                var optionOutput = app.Option("-o|--output <OUTPUT>", "Output histogram file name. Default: ./histogram.tsv",
                     CommandOptionType.SingleValue);
 
                 var optionNumBuckets = app.Option<int>("-n|--numOfBuckets <N>",
@@ -73,6 +75,7 @@ namespace TemperatureHistogramChallenge
                     "An exception happened while running the application.");
             }
 
+            logger.LogInformation("Done!");
 #if DEBUG
             Console.ReadLine();
 #endif
@@ -82,7 +85,10 @@ namespace TemperatureHistogramChallenge
         {
             // add loggers           
             serviceCollection.AddLogging(configure => configure.AddConsole())
-                .Configure<LoggerFilterOptions>(options => options.MinLevel = LogLevel.Information);
+                .Configure<LoggerFilterOptions>(options =>
+                    options.MinLevel = (Environment.GetEnvironmentVariable("DOTNETCORE_ENVIRONMENT") == "Development") 
+                        ? LogLevel.Trace 
+                        : LogLevel.Information);
 
             // Build configuration
             IConfiguration configuration = new ConfigurationBuilder()
@@ -108,8 +114,19 @@ namespace TemperatureHistogramChallenge
 
             // Output file service
             serviceCollection.AddTransient<IOutputFileService, TsvFileService>();
-        }
 
+            // Add Redis connection
+            var redisConnectionString = (Environment.GetEnvironmentVariable("DOTNETCORE_ENVIRONMENT") == "Development")
+            ? "localhost"
+            : $"{configuration["redisServer"]}:{configuration["redisPort"]}";
+
+            serviceCollection.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConnectionString));
+
+
+            // API call failure summary
+            serviceCollection.AddSingleton<IApiStats, ApiStats>();
+
+        }
     }
 
 }

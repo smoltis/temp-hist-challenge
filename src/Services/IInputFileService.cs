@@ -4,6 +4,6 @@ namespace TemperatureHistogramChallenge.Services
 {
     public interface IInputFileService
     {
-        IDictionary<double, int> ProcessFile(string input);
+        IDictionary<float, int> ProcessFile(string input);
     }
 }
