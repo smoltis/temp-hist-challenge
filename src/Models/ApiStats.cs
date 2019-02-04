@@ -9,15 +9,19 @@ namespace TemperatureHistogramChallenge.Models
 
         private int TotalCalls { get; set; }
 
-        private Dictionary<ApiFailReason, int> FailReasons => new Dictionary<ApiFailReason, int>();
+        public IDictionary<ApiFailReason, int> FailReasons;
 
+        public ApiStats()
+        {
+            FailReasons = new Dictionary<ApiFailReason, int>();
+        }
         public void Add(ApiFailReason apiFailReason)
         {
             lock (Semaphore)
             {
                 if (!FailReasons.ContainsKey(apiFailReason))
                 {
-                    FailReasons[apiFailReason] = 1;
+                    FailReasons.Add(apiFailReason, 1);
                 }
                 else 
                 {
@@ -30,7 +34,8 @@ namespace TemperatureHistogramChallenge.Models
         public List<string> Summary()
         {
             return (TotalCalls > 0)
-                ? FailReasons.Select(kv => $"{kv.Key.ToString()}: {kv.Value} ({100 * kv.Value / TotalCalls:2d})").ToList()
+                // TODO: add truncation of %
+                ? FailReasons.Select(kv => $"{kv.Key.ToString()}: {kv.Value} ({(100 * kv.Value / TotalCalls):F1}%)").ToList()
                 : new List<string>();
         }
     }
