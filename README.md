@@ -99,7 +99,7 @@ The entry point `Main()` class is located in **src/Program.cs** file.
 Command line parsing and services configuration is done in the same entry file.
 The implementation can be replaced if needed by changing the service provider bindings. More services can be added in the same manner.
 
-###Main service interfaces (src/Services/...):
+### Main service interfaces (src/Services/...):
 
 * `IHistogramService` - main orchestrator
 * `IInputFileService` - read and process the input file
@@ -107,7 +107,7 @@ The implementation can be replaced if needed by changing the service provider bi
 * `ILocationService` - seek location coordinates by IP address through public web API
 * `IWeatherService` - fetch the weather forecast by geolocation
 
-###Services implementation (src/Services/...):
+### Services implementation (src/Services/...):
 
 * `HistogramService.cs` calls the service to read the file and get the temperature histogram, it will then bucketize it in accordance with the number of buckets provided by the start parameter, print out the failed API summary with reasons if any and send the histogram data to the output file service to write it to disk.
 * `MapReduceFileService.cs` reads the input file using the map-reduce pattern with the number of workers equal to number of logical CPUs available. Near-linear complexity scaling can be achieved. One has to consider memory complexity in this implementation though. As reducer will maintain in-memory dictionary. To alleviate the memory pressure the trade-off was  used at cost of breaking the separation of concerns design principle. The service has nested calls to web API services to find the location and the weather forecast. It makes the overall number of non-unique lines in IP->Location->Temperature sets smaller thus saving memory in the resulting data structure. Raw data cleansing and validationb isperformed in this service.
@@ -115,13 +115,13 @@ The implementation can be replaced if needed by changing the service provider bi
 * `OpenWeatherMapService.cs` enables weather forecast for given geolocation using OpenWeatherMap.com web service. Free tier api key is provided separately, configurable in src/appsettings.json file.
 * `TsvFileService.cs` employs csvHelper nuget package to write histogram data into tab-delimited file on disk.
 
-###Models (src/Models/...):
+### Models (src/Models/...):
 * `Bucket.cs` class represents the bucket of the resulting histogram
 * `TemperatureFileLine.cs` class contains the desired data line read from the file
 * `OpenWeatherMapResponseDto.cs` model for json deserializer of OpenWeatherMap web API response
 * `ApiStats.cs` class contains the failure summary of API calls and missing data lines. It is registred using Singleton design pattern and accessed via constructor dependency injection by different services.
 
-###Extension methods (src/Extensions/...):
+### Extension methods (src/Extensions/...):
 * `FloatExtensions.cs` implements the truncation of digits after the decimal point for the float type
 * `HistogramEntensions.cs` implements dictionary collection etension method that divides the histogram into N buckets 
 
