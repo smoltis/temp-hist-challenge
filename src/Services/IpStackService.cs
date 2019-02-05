@@ -31,19 +31,36 @@ namespace TemperatureHistogramChallenge.Services
         public async Task<string> Run(string ip)
         {
             string result = "";
+            string cachedResult = "";
             IDatabase cache = redis.GetDatabase();
-            string cachedResult = await cache.StringGetAsync($"ips_{ip}");  
-            if(string.IsNullOrEmpty(cachedResult) || cachedResult == "-1")
+            try
             {
-                result = GetResource(ip);
-                if (!string.IsNullOrEmpty(result))
-                    await cache.StringSetAsync($"ips_{ip}", result, TimeSpan.FromDays(1));  
+                cachedResult = await cache.StringGetAsync($"ips_{ip}");
             }
-            else
+            catch (RedisException ex)
             {
-                logger.LogDebug("IPStack cache hit");
-                result = cachedResult;
+                logger.LogError(ex, "Redis exception: ");
             }
+            if (string.IsNullOrEmpty(cachedResult) || cachedResult == "-1")
+                {
+                    result = GetResource(ip);
+                try
+                {
+                    if (!string.IsNullOrEmpty(result))
+                        await cache.StringSetAsync($"ips_{ip}", result, TimeSpan.FromDays(1));
+                }
+                catch (RedisException ex)
+                {
+                    logger.LogError(ex, "Redis exception: ");
+                }
+
+            }
+                else
+                {
+                    logger.LogDebug("IPStack cache hit");
+                    result = cachedResult;
+                }
+
             return result;
         }
 
@@ -66,14 +83,9 @@ namespace TemperatureHistogramChallenge.Services
                 logger.LogError(e, "Error in IpStackService: ");
                 if (e.InnerException?.InnerException?.Message == "Device not configured")
                     apiStats.Add(ApiFailReason.ConnectionError);
-                apiStats.Add(ApiFailReason.FailedLookup);
+                apiStats.Add(ApiFailReason.FailedLocationLookup);
                 return string.Empty;
             }
-            //catch (Exception ex)
-            //{
-            //    logger.LogError(ex, "Exception: ");
-            //    return null;
-            //}
         }
     }
 }

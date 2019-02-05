@@ -122,7 +122,6 @@ The implementation can be replaced if needed by changing the service provider bi
 * `ApiStats.cs` class contains the failure summary of API calls and missing data lines. It is registred using Singleton design pattern and accessed via constructor dependency injection by different services.
 
 ### Extension methods (src/Extensions/...):
-* `FloatExtensions.cs` implements the truncation of digits after the decimal point for the float type
 * `HistogramEntensions.cs` implements dictionary collection etension method that divides the histogram into N buckets 
 
 

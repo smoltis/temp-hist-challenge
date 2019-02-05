@@ -18,7 +18,7 @@ namespace CreateWeatherHistogram.Tests
         {
             _apiStats.Add(ApiFailReason.MissingData);
             // Assert
-            Assert.Equal(1, _apiStats.FailReasons.Count);
+            Assert.Single(_apiStats.FailReasons);
         }
         [Fact]
         public void ApiStats_SummaryOutput1()
@@ -26,8 +26,8 @@ namespace CreateWeatherHistogram.Tests
             //Arrannge
             var expected = new List<string> 
             { 
-                "MissingData: 3 (75.0%)",
-                "ConnectionError: 1 (25.0%)" 
+                "MissingData: 3 (75.00%)",
+                "ConnectionError: 1 (25.00%)" 
             };
             _apiStats.Add(ApiFailReason.MissingData);
             _apiStats.Add(ApiFailReason.MissingData);

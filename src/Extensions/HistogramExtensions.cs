@@ -14,23 +14,26 @@ namespace TemperatureHistogramChallenge.Extensions
             if (source.Count == 0)
                 return buckets;
 
-            var min = Math.Floor(source.First().Key);
-            var max = Math.Ceiling(source.Last().Key);
-
+            var min = source.First().Key;
+            var max = source.Last().Key+0.01;
 
             var bucketSize = (max - min) / totalBuckets;
 
             for (int i = 0; i < totalBuckets; i++)
             {
-                var bucket = new Bucket();
-                bucket.bucketMin = (min + i * bucketSize);
-                bucket.bucketMax = (bucket.bucketMin + bucketSize);
-                bucket.Count = source.Where(kv => (kv.Key >= bucket.bucketMin && kv.Key < bucket.bucketMax)).Sum(kv => kv.Value);
-                buckets.Add(bucket);
+                var t_min = (min + i * bucketSize);
+                var t_max = (min + i * bucketSize) + bucketSize;
+                var count = source.Where(kv => (kv.Key >= t_min && kv.Key < t_max)).Sum(kv => kv.Value);
+                //TODO: boundaries error due to rounding
+                buckets.Add(new Bucket
+                {
+                    bucketMin = t_min.ToString("F1"),
+                    bucketMax = t_max.ToString("F1"),
+                    Count = count,
+                });
             }
 
             return buckets;
         }
-
     }
 }

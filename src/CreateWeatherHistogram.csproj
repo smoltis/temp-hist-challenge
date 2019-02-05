@@ -34,4 +34,7 @@
   <ItemGroup>
     <Folder Include="Extensions\" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Extensions\FloatExtensions.cs" />
+  </ItemGroup>
 </Project>

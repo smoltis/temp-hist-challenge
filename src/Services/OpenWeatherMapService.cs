@@ -63,6 +63,12 @@ namespace TemperatureHistogramChallenge.Services
         {
             try
             {
+                var geoCoord = location.Split(',');
+                if (geoCoord.Length != 2)
+                {
+                    apiStats.Add(ApiFailReason.MissingData);
+                    throw new Exception("OpenWeatherMapService unrecognised location coordinates");
+                }
                 var locationParam = $"?lat={location.Split(',')[0]}&lon={location.Split(',')[1]}";
                 var req = $"{locationParam}&APPID={appkey}&units={tempScale}";
                 var response = await httpClient.GetAsync(req);
@@ -71,7 +77,7 @@ namespace TemperatureHistogramChallenge.Services
                 var weather = JsonConvert.DeserializeObject<OpenWeatherMapResponseDto>(content);
                 if (weather == null)
                 {
-                    apiStats.Add(ApiFailReason.FailedLookup);
+                    apiStats.Add(ApiFailReason.FailedWeatherLookup);
                     logger.LogWarning($"Weather deserialization failed, content: {content}");
                 }
                 // make sure the weather forecast is for tomorrow
@@ -79,7 +85,7 @@ namespace TemperatureHistogramChallenge.Services
                 var t = weather.list.FirstOrDefault(_ => _.dt >= unixTimestamp);
                 if (t is null)
                 {
-                    apiStats.Add(ApiFailReason.FailedLookup);
+                    apiStats.Add(ApiFailReason.FailedWeatherLookup);
                 }
                 return t.main.temp;
 

@@ -33,8 +33,9 @@ namespace TemperatureHistogramChallenge.Services
             var globalTemperatureData = new SortedDictionary<float, int>();
 
             #region MapReduce
-
-            Parallel.ForEach(File.ReadLines(input),
+            var lines = File.ReadAllLines(input);
+            logger.LogDebug($"Read {lines.LongLength} lines from the file");
+            Parallel.ForEach(lines,
                 // Set up MaxDOP
                 new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
                 // Initializer:  create task-local storage:
@@ -100,15 +101,9 @@ namespace TemperatureHistogramChallenge.Services
             }
             catch (Exception ex)
             {
-                if (ex.InnerException?.InnerException?.HelpLink == "https://stackexchange.github.io/StackExchange.Redis/Timeouts")
-                {
-                    logger.LogWarning($"Redis timeout exception: {ex.InnerException.InnerException.Message}");
-                }
-                else
-                {
-                    apiStats.Add(ApiFailReason.FailedLookup);
+                    //apiStats.Add(ApiFailReason.FailedLookup);
                     logger.LogError(ex, "Exception: ");
-                }
+
             }
             return localTempData;
         }
