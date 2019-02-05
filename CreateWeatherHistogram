@@ -39,5 +39,5 @@ echo OUTPUT FILE NAME       = "${OUTPUT}"
 echo NUMBER OF BUCKETS      = "${BUCKETS}"
 
 docker-compose build
-docker-compose run --rm -w /app -v "${part1}":/app/data app --input "./data/${part2}" --output "./data/${OUTPUT}" --numOfBuckets "${BUCKETS}"
+docker-compose run --rm -w /app -v "${part1}":/app/data:Z app --input "./data/${part2}" --output "./data/${OUTPUT}" --numOfBuckets "${BUCKETS}"
 docker-compose stop redis
