@@ -22,7 +22,7 @@ summary to the console for rows that could not be included in the histogram. Inc
 
 ## 3. Examples:
 ```
-CreateWeatherHistogram --input ./ttd_test_data.csv --output ./histogram.tsv --numOfBuckets 5
+./CreateWeatherHistogram --input ./ttd_test_data.csv --output ./histogram.tsv --numOfBuckets 5
 
 
 ```
