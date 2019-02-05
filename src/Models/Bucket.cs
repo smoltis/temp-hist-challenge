@@ -4,6 +4,6 @@
     {
         public string bucketMin { get; set; }
         public string bucketMax { get; set; }
-        public int Count { get; set; }
+        public int count { get; set; }
     }
 }

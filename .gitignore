@@ -334,3 +334,7 @@ ASALocalRun/
 
 # Mac cache files
 .DS_Store
+
+# exclude data folders
+data/*
+src/data/*

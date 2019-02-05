@@ -32,11 +32,9 @@ namespace TemperatureHistogramChallenge.Services
         {
             var globalTemperatureData = new SortedDictionary<float, int>();
 
-            #region MapReduce
             var lines = File.ReadAllLines(input);
             logger.LogDebug($"Read {lines.LongLength} lines from the file");
             Parallel.ForEach(lines,
-                // Set up MaxDOP
                 new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
                 // Initializer:  create task-local storage:
                 () => new Dictionary<float, int>(),
@@ -45,8 +43,6 @@ namespace TemperatureHistogramChallenge.Services
                 // Finalizer: reduce(merge) individual local storage into global storage
                 (localDict) => Reduce(localDict, globalTemperatureData)
             );
-
-            #endregion
 
             return globalTemperatureData;
         }
@@ -80,30 +76,28 @@ namespace TemperatureHistogramChallenge.Services
             }
             try
             {
-                // get locations and weather forecast here to save memory
                 logger.LogDebug($"Read from file {tempLine.Ip}");
 
+                // get locations and weather forecast here to save memory
                 var weatherAtLocationTask = locationService.Run(tempLine.Ip)
                     .ContinueWith(t => { return weatherService.WeatherForecast(t.Result).Result; }
                         ,TaskContinuationOptions.OnlyOnRanToCompletion);
 
-                var tKey = weatherAtLocationTask.Result;
-
-                if (!localTempData.ContainsKey(tKey))
-                {
-                    localTempData[tKey] = 1;
-                }
-                else
-                {
-                    localTempData[tKey]++;
-                }
-
+                    var tKey = weatherAtLocationTask.Result;
+                    
+                    if (!localTempData.ContainsKey(tKey))
+                    {
+                        localTempData[tKey] = 1;
+                    }
+                    else
+                    {
+                        localTempData[tKey]++;
+                    }
             }
             catch (Exception ex)
             {
-                    //apiStats.Add(ApiFailReason.FailedLookup);
-                    logger.LogError(ex, "Exception: ");
-
+                logger.LogError(ex, "Exception: ");
+                apiStats.Add(ApiFailReason.FailedApiLookup);
             }
             return localTempData;
         }
@@ -118,12 +112,11 @@ namespace TemperatureHistogramChallenge.Services
         {
             var columns = line.Split('\t');
 
-            // column count validation
             if (columns.Length < 24)
                 return null;
 
             var ipAddr = columns[23].Trim().Replace(" ",string.Empty);
-            // ip address validation
+
             if (!ValidateIPv4(ipAddr))
                 return null;
 

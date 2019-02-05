@@ -112,7 +112,23 @@ The implementation can be replaced if needed by changing the service provider bi
 * `HistogramService.cs` calls the service to read the file and get the temperature histogram, it will then bucketize it in accordance with the number of buckets provided by the start parameter, print out the failed API summary with reasons if any and send the histogram data to the output file service to write it to disk.
 * `MapReduceFileService.cs` reads the input file using the map-reduce pattern with the number of workers equal to number of logical CPUs available. Near-linear complexity scaling can be achieved. One has to consider memory complexity in this implementation though. As reducer will maintain in-memory dictionary. To alleviate the memory pressure the trade-off was  used at cost of breaking the separation of concerns design principle. The service has nested calls to web API services to find the location and the weather forecast. It makes the overall number of non-unique lines in IP->Location->Temperature sets smaller thus saving memory in the resulting data structure. Raw data cleansing and validation is performed in this service too.
 * `IpStackService.cs` enabled IpStack.com geolocation web service access. Free tier api key is provided separately, configurable in **src/appsettings.json** file. 
+
+~~~
+Limitations of the Free Plan:
+10,000 requests per month
+~~~
+
+
 * `OpenWeatherMapService.cs` enables weather forecast for given geolocation using OpenWeatherMap.com web service. Free tier api key is provided separately, configurable in src/appsettings.json file.
+
+~~~
+Limitations of the Free Plan:
+Threshold: 7,200 
+Hourly forecast: 5 
+Daily forecast: 0 
+Calls 1min: 60 
+~~~
+
 * `TsvFileService.cs` employs csvHelper nuget package to write histogram data into tab-delimited file on disk.
 
 ### Models (src/Models/...):

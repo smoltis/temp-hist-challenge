@@ -41,15 +41,17 @@ namespace TemperatureHistogramChallenge.Services
         public async Task<float> WeatherForecast(string location)
         {
             float result;
+
             IDatabase cache = redis.GetDatabase();
-            string cachedResult = await cache.StringGetAsync($"owm_{tempScale}_{location}");
+
+            var cachedResult = await CacheLookup($"owm_{tempScale}_{location}", cache);
+
             if (string.IsNullOrEmpty(cachedResult))
             {
                 result = await GetResource(location);
                 // delay of 2 seconds to keep within free tier limit 60 req/min
                 await Task.Delay(2000);
-                TimeSpan untilMidnight = DateTime.Today.AddDays(1.0) - DateTime.Now;
-                await cache.StringSetAsync($"owm_{tempScale}_{location}", result, untilMidnight);
+                await PutToCache($"owm_{tempScale}_{location}", result, cache);
             }
             else
             {
@@ -59,6 +61,33 @@ namespace TemperatureHistogramChallenge.Services
             return result;
         }
 
+        private async Task PutToCache(string key, float value, IDatabase cache)
+        {
+            try
+            {
+                TimeSpan untilMidnight = DateTime.Today.AddDays(1.0) - DateTime.Now;
+                await cache.StringSetAsync(key, value, untilMidnight);
+            }
+            catch (RedisException ex)
+            {
+                logger.LogWarning(ex, "Redis exception: ");
+            }
+        }
+
+        private async Task<string> CacheLookup(string key, IDatabase cache)
+        {
+            string cachedResult = "";
+            try
+            {
+                cachedResult = await cache.StringGetAsync(key);
+            }
+            catch (RedisException ex)
+            {
+                logger.LogWarning(ex, "Redis exception: ");
+            }
+            return cachedResult;
+        }
+
         private async Task<float> GetResource(string location)
         {
             try
@@ -66,8 +95,7 @@ namespace TemperatureHistogramChallenge.Services
                 var geoCoord = location.Split(',');
                 if (geoCoord.Length != 2)
                 {
-                    apiStats.Add(ApiFailReason.MissingData);
-                    throw new Exception("OpenWeatherMapService unrecognised location coordinates");
+                    throw new Exception("OpenWeatherMapService invalid location format");
                 }
                 var locationParam = $"?lat={location.Split(',')[0]}&lon={location.Split(',')[1]}";
                 var req = $"{locationParam}&APPID={appkey}&units={tempScale}";
@@ -77,25 +105,26 @@ namespace TemperatureHistogramChallenge.Services
                 var weather = JsonConvert.DeserializeObject<OpenWeatherMapResponseDto>(content);
                 if (weather == null)
                 {
-                    apiStats.Add(ApiFailReason.FailedWeatherLookup);
-                    logger.LogWarning($"Weather deserialization failed, content: {content}");
+                    throw new Exception("OpenWeatherMapService unrecognised location coordinates");
                 }
                 // make sure the weather forecast is for tomorrow
                 Int32 unixTimestamp = (Int32)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
                 var t = weather.list.FirstOrDefault(_ => _.dt >= unixTimestamp);
                 if (t is null)
                 {
-                    apiStats.Add(ApiFailReason.FailedWeatherLookup);
+                    throw new Exception("OpenWeatherMapService forecast not found");
                 }
                 return t.main.temp;
 
             }
             catch (HttpRequestException e)
             {
-                logger.LogError(e, "Error in OpenEatherMapService: ");
                 if (e.Message == "Device not configured")
                     apiStats.Add(ApiFailReason.ConnectionError);
-
+                throw;
+            }
+            catch (Exception)
+            {
                 throw;
             }
         }

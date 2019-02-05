@@ -18,8 +18,6 @@ namespace TemperatureHistogramChallenge.Services
 
         IpStackClient client;
 
-        //private IConfiguration _configuration;
-
         public IpStackService(IConfiguration configuration, IConnectionMultiplexer redis, IApiStats apiStats, ILogger<IpStackService> logger)
         {
             this.redis = redis;
@@ -31,60 +29,71 @@ namespace TemperatureHistogramChallenge.Services
         public async Task<string> Run(string ip)
         {
             string result = "";
-            string cachedResult = "";
+
             IDatabase cache = redis.GetDatabase();
+
+            var cachedResult = await CacheLookup($"ips_{ip}", cache);
+
+            if (string.IsNullOrEmpty(cachedResult) || cachedResult == "-1")
+            {
+                result = GetResource(ip);
+                await PutToCache($"ips_{ip}", result, cache);
+            }
+            else
+            {
+                logger.LogDebug("IPStack cache hit");
+                result = cachedResult;
+            }
+
+            return result;
+        }
+
+        private async Task PutToCache(string key, string value, IDatabase cache)
+        {
             try
             {
-                cachedResult = await cache.StringGetAsync($"ips_{ip}");
+                if (!string.IsNullOrEmpty(value))
+                    await cache.StringSetAsync(key, value, TimeSpan.FromDays(1));
             }
             catch (RedisException ex)
             {
                 logger.LogError(ex, "Redis exception: ");
             }
-            if (string.IsNullOrEmpty(cachedResult) || cachedResult == "-1")
-                {
-                    result = GetResource(ip);
-                try
-                {
-                    if (!string.IsNullOrEmpty(result))
-                        await cache.StringSetAsync($"ips_{ip}", result, TimeSpan.FromDays(1));
-                }
-                catch (RedisException ex)
-                {
-                    logger.LogError(ex, "Redis exception: ");
-                }
+        }
 
+        private async Task<string> CacheLookup(string key, IDatabase cache)
+        {
+            string cachedResult = "";
+            try
+            {
+                cachedResult = await cache.StringGetAsync(key);
             }
-                else
-                {
-                    logger.LogDebug("IPStack cache hit");
-                    result = cachedResult;
-                }
+            catch (RedisException ex)
+            {
+                logger.LogError(ex, "Redis exception: ");
+            }
 
-            return result;
+            return cachedResult;
         }
 
         public string GetResource(string ip)
         {
             try
             {
-                // Get single IP address with defaults
                 IpAddressDetails location = client.GetIpAddressDetails(ip);
                 var result = string.Join(',', location.Latitude.ToString(), location.Longitude.ToString());
                 if (string.IsNullOrEmpty(result) || result == "0,0")
                 {
                     throw new Exception("IpStack API Lookup Failed");
                 }
-                else
-                    return result;
+                return result;
             }
             catch (Exception e)
             {
                 logger.LogError(e, "Error in IpStackService: ");
                 if (e.InnerException?.InnerException?.Message == "Device not configured")
                     apiStats.Add(ApiFailReason.ConnectionError);
-                apiStats.Add(ApiFailReason.FailedLocationLookup);
-                return string.Empty;
+                throw;
             }
         }
     }

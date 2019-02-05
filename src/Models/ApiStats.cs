@@ -23,7 +23,6 @@ namespace TemperatureHistogramChallenge.Models
             var total = FailReasons.Values.Sum();
 
             return (total > 0)
-                // TODO: add truncation of %
                 ? FailReasons.Select(kv => $"{kv.Key.ToString()}: {kv.Value} ({(100.0 * kv.Value / total):F2}%)").ToList()
                 : new List<string>();
         }
@@ -32,8 +31,7 @@ namespace TemperatureHistogramChallenge.Models
     public enum ApiFailReason
     {
         MissingData,
-        FailedLocationLookup,
-        FailedWeatherLookup,
+        FailedApiLookup,
         ConnectionError
     }
 }

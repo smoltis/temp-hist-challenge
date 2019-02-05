@@ -22,27 +22,28 @@ namespace TemperatureHistogramChallenge.Services
         }
         public void Create(string input, string output, int buckets)
         {
-            // read raw data from file, ip address
-            // enrich with next day forecast 
-            // (inline to save memory: resolve IP to location as we go, get temperature by location) 
-            var temperatureData = inputFileService.ProcessFile(input);
-
-            logger.LogDebug($"Total T {temperatureData.Values.Sum()}, unique T: {temperatureData.Count}");
-
-
-            // create a histogram from collected data
-            var histogram = temperatureData.Bucketize(buckets);
-            // print api request stats
-            logger.LogInformation(string.Join(Environment.NewLine,apiStats.Summary()));
-
-            if (histogram.Count > 0)
+            try
             {
-                outputFileService.SaveFile(histogram, output);
-                logger.LogInformation("Done!");
-            }
-            else
+                var temperatureData = inputFileService.ProcessFile(input);
+
+                logger.LogDebug($"Total T {temperatureData.Values.Sum()}, unique T: {temperatureData.Count}");
+
+                var histogram = temperatureData.Bucketize(buckets);
+
+                logger.LogInformation(string.Join(Environment.NewLine, apiStats.Summary()));
+
+                if (histogram.Count > 0)
+                {
+                    outputFileService.SaveFile(histogram, output);
+                    logger.LogInformation("Done!");
+                }
+                else
+                {
+                    logger.LogWarning("Nothing to save. Check input file, quality of data and connectivity to the Internet.");
+                }
+            } catch (Exception ex)
             {
-                logger.LogWarning("Nothing to save. Check input file, quality of data and connectivity to the Internet.");
+                logger.LogError(ex, "Exception: ");
             }
 
 #if DEBUG
