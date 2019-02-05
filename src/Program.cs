@@ -14,73 +14,60 @@ namespace TemperatureHistogramChallenge
     {
         public static void Main(string[] args)
         { 
-                #region DependencyInjection
+            #region DependencyInjection
 
-                // create a new ServiceCollection 
-                var serviceCollection = new ServiceCollection();
+            // create a new ServiceCollection 
+            var serviceCollection = new ServiceCollection();
 
-                ConfigureServices(serviceCollection);
+            ConfigureServices(serviceCollection);
 
-                // create a new ServiceProvider
-                var serviceProvider = serviceCollection.BuildServiceProvider();
+            // create a new ServiceProvider
+            var serviceProvider = serviceCollection.BuildServiceProvider();
 
-                // logger
-                var logger = serviceProvider.GetService<ILogger<Program>>();
+            // logger
+            var logger = serviceProvider.GetService<ILogger<Program>>();
 
-                #endregion
+            #endregion
 
-                #region CommandLineTools
-            try
+            #region CommandLineTools
+
+            var app = new CommandLineApplication();
+            app.Name = "CreateWeatherHistogram";
+            app.HelpOption();
+
+            var optionInput = app.Option("-i|--input <INPUT>", "Required. Input temperature file",
+                    CommandOptionType.SingleValue)
+                .IsRequired()
+                .Accepts(v => v.ExistingFile());
+
+            var optionOutput = app.Option("-o|--output <OUTPUT>", "Output histogram file name. Default: ./histogram.tsv",
+                CommandOptionType.SingleValue);
+
+            var optionNumBuckets = app.Option<int>("-n|--numOfBuckets <N>",
+                    "Number of buckets for a temperature histogram", CommandOptionType.SingleValue)
+                .Accepts(o => o.Range(1, 1000));
+
+            #endregion
+
+            app.OnExecute(() =>
             {
+                var input = Path.GetFullPath(optionInput.Value());
 
-                var app = new CommandLineApplication();
-                app.Name = "CreateWeatherHistogram";
-                app.HelpOption();
+                var output = optionOutput.HasValue()
+                    ? Path.GetFullPath(optionOutput.Value())
+                    : Path.Combine(Directory.GetCurrentDirectory(), "histogram.tsv");
 
-                var optionInput = app.Option("-i|--input <INPUT>", "Required. Input temperature file",
-                        CommandOptionType.SingleValue)
-                    .IsRequired()
-                    .Accepts(v => v.ExistingFile());
+                var numOfBuckets = optionNumBuckets.HasValue() ? optionNumBuckets.ParsedValue : 1;
 
-                var optionOutput = app.Option("-o|--output <OUTPUT>", "Output histogram file name. Default: ./histogram.tsv",
-                    CommandOptionType.SingleValue);
+                logger.LogInformation($"Input: {input}");
+                logger.LogInformation($"Out: {output}");
+                logger.LogInformation($"Buckets: {numOfBuckets}");
 
-                var optionNumBuckets = app.Option<int>("-n|--numOfBuckets <N>",
-                        "Number of buckets for a temperature histogram", CommandOptionType.SingleValue)
-                    .Accepts(o => o.Range(1, 1000));
+                // begin processing
+                serviceProvider.GetService<IHistogramService>().Create(input, output, numOfBuckets);
+            });
 
-                #endregion
-
-                app.OnExecute(() =>
-                {
-                    var input = Path.GetFullPath(optionInput.Value());
-
-                    var output = optionOutput.HasValue()
-                        ? Path.GetFullPath(optionOutput.Value())
-                        : Path.Combine(Directory.GetCurrentDirectory(), "histogram.tsv");
-
-                    var numOfBuckets = optionNumBuckets.HasValue() ? optionNumBuckets.ParsedValue : 1;
-
-                    logger.LogInformation($"Input: {input}");
-                    logger.LogInformation($"Out: {output}");
-                    logger.LogInformation($"Buckets: {numOfBuckets}");
-
-                    // begin processing
-                    serviceProvider.GetService<IHistogramService>().Create(input, output, numOfBuckets);
-                });
-
-                app.Execute(args);
-            }
-            catch (Exception generalException)
-            {
-                logger.LogError(generalException,
-                    "An exception happened while running the application.");
-            }
-
-            logger.LogInformation("Done!");
-#if DEBUG
-            Console.ReadLine();
-#endif
+            app.Execute(args);
         }
 
         private static void ConfigureServices(IServiceCollection serviceCollection)

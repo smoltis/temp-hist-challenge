@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System;
+using System.Linq;
+using Microsoft.Extensions.Logging;
 using TemperatureHistogramChallenge.Extensions;
 using TemperatureHistogramChallenge.Models;
 
@@ -24,17 +26,28 @@ namespace TemperatureHistogramChallenge.Services
             // enrich with next day forecast 
             // (inline to save memory: resolve IP to location as we go, get temperature by location) 
             var temperatureData = inputFileService.ProcessFile(input);
-            logger.LogDebug("Total unique temperatures(C): {0}", temperatureData.Count);
+
+            logger.LogDebug($"Total T {temperatureData.Values.Sum()}, unique T: {temperatureData.Count}");
+
 
             // create a histogram from collected data
             var histogram = temperatureData.Bucketize(buckets);
-
             // print api request stats
-            // TODO: BUG: find out why dictionary is empty and nothing is printed
-            apiStats.Summary().ForEach(_ => logger.LogInformation(_));
+            logger.LogInformation(string.Join(Environment.NewLine,apiStats.Summary()));
 
-            outputFileService.SaveFile(histogram, output);
+            if (histogram.Count > 0)
+            {
+                outputFileService.SaveFile(histogram, output);
+                logger.LogInformation("Done!");
+            }
+            else
+            {
+                logger.LogWarning("Nothing to save. Check input file, quality of data and connectivity to the Internet.");
+            }
 
+#if DEBUG
+            Console.ReadLine();
+#endif
         }
 
 

@@ -33,10 +33,10 @@ namespace TemperatureHistogramChallenge.Services
             string result = "";
             IDatabase cache = redis.GetDatabase();
             string cachedResult = await cache.StringGetAsync($"ips_{ip}");  
-            if(string.IsNullOrEmpty(cachedResult))
+            if(string.IsNullOrEmpty(cachedResult) || cachedResult == "-1")
             {
                 result = GetResource(ip);
-                if (result != null)
+                if (!string.IsNullOrEmpty(result))
                     await cache.StringSetAsync($"ips_{ip}", result, TimeSpan.FromDays(1));  
             }
             else
@@ -53,14 +53,21 @@ namespace TemperatureHistogramChallenge.Services
             {
                 // Get single IP address with defaults
                 IpAddressDetails location = client.GetIpAddressDetails(ip);
-                return string.Join(',', location.Latitude.ToString(), location.Longitude.ToString());
+                var result = string.Join(',', location.Latitude.ToString(), location.Longitude.ToString());
+                if (string.IsNullOrEmpty(result) || result == "0,0")
+                {
+                    throw new Exception("IpStack API Lookup Failed");
+                }
+                else
+                    return result;
             }
             catch (Exception e)
             {
                 logger.LogError(e, "Error in IpStackService: ");
-                if (e.Message == "Device not configured")
+                if (e.InnerException?.InnerException?.Message == "Device not configured")
                     apiStats.Add(ApiFailReason.ConnectionError);
-                return null;
+                apiStats.Add(ApiFailReason.FailedLookup);
+                return string.Empty;
             }
             //catch (Exception ex)
             //{

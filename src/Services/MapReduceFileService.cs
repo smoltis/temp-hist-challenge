@@ -100,7 +100,7 @@ namespace TemperatureHistogramChallenge.Services
             }
             catch (Exception ex)
             {
-                if (ex.InnerException.InnerException.HelpLink == "https://stackexchange.github.io/StackExchange.Redis/Timeouts")
+                if (ex.InnerException?.InnerException?.HelpLink == "https://stackexchange.github.io/StackExchange.Redis/Timeouts")
                 {
                     logger.LogWarning($"Redis timeout exception: {ex.InnerException.InnerException.Message}");
                 }
@@ -124,7 +124,7 @@ namespace TemperatureHistogramChallenge.Services
             var columns = line.Split('\t');
 
             // column count validation
-            if (columns.Length < 23)
+            if (columns.Length < 24)
                 return null;
 
             var ipAddr = columns[23].Trim().Replace(" ",string.Empty);

@@ -2,8 +2,8 @@
 {
     public class Bucket
     {
-        public float bucketMin { get; set; }
-        public float bucketMax { get; set; }
+        public double bucketMin { get; set; }
+        public double bucketMax { get; set; }
         public int Count { get; set; }
     }
 }
