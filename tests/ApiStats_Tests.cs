@@ -6,22 +6,23 @@ using Xunit;
 
 namespace CreateWeatherHistogram.Tests
 {
-    public class ApiStats_Add
+    public class ApiStats_Tests
     {
         private readonly ApiStats _apiStats;
-        public ApiStats_Add()
+        public ApiStats_Tests()
         {
             _apiStats = new ApiStats();
         }
         [Fact]
-        public void ApiStats_AddToDictionary1()
+        public void ApiStats_AddToDictionary1_Returns1()
         {
+            // Arrange, Act
             _apiStats.Add(ApiFailReason.MissingData);
             // Assert
             Assert.Single(_apiStats.FailReasons);
         }
         [Fact]
-        public void ApiStats_SummaryOutput1()
+        public void ApiStats_SummaryOutput_Lines2Events4()
         {
             //Arrannge
             var expected = new List<string> 

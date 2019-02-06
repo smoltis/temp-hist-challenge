@@ -24,7 +24,7 @@ namespace TemperatureHistogramChallenge.Services
         {
             try
             {
-                var temperatureData = inputFileService.ProcessFile(input);
+                var temperatureData = inputFileService.ProcessFile(new InputFile() { FullFilename = input});
 
                 logger.LogDebug($"Total T {temperatureData.Values.Sum()}, unique T: {temperatureData.Count}");
 

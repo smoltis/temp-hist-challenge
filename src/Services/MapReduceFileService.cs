@@ -28,11 +28,11 @@ namespace TemperatureHistogramChallenge.Services
             this.apiStats = apiStats;
         }
 
-        public IDictionary<float, int> ProcessFile(string input)
+        public IDictionary<float, int> ProcessFile(IInputFile input)
         {
             var globalTemperatureData = new SortedDictionary<float, int>();
 
-            var lines = File.ReadAllLines(input);
+            var lines = input.ReadAllLines(input.FullFilename);
             logger.LogDebug($"Read {lines.LongLength} lines from the file");
             Parallel.ForEach(lines,
                 new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
