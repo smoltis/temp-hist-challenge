@@ -30,5 +30,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="Extensions\FloatExtensions.cs" />
+    <Compile Remove="Services\IIpStackClient.cs" />
   </ItemGroup>
 </Project>

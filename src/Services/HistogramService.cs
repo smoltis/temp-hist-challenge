@@ -46,9 +46,6 @@ namespace TemperatureHistogramChallenge.Services
                 logger.LogError(ex, "Exception: ");
             }
 
-#if DEBUG
-            Console.ReadLine();
-#endif
         }
 
 

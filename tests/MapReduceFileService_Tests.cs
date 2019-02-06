@@ -18,8 +18,6 @@ namespace CreateWeatherHistogram.Tests
         {
             // Arrange
             var logger = new Mock<ILogger<MapReduceFileService>>();
-            //logger.Setup(x => x.LogDebug(It.IsAny<Exception>(),It.IsAny<string>()));
-            //logger.Setup(x => x.LogError(It.IsAny<Exception>(), It.IsAny<string>()));
 
             var locationService = new Mock<ILocationService>();
             locationService.Setup(x => x.Run(It.IsAny<string>()))
@@ -48,17 +46,17 @@ namespace CreateWeatherHistogram.Tests
                 .Returns("file.csv");
 
             // Act
-            var expectedIpValid = mapReduceFileService.ValidateIPv4("127.0.0.1");
-            var expectedLineIp = mapReduceFileService.ParseLine(fileLine[0]);
-            Action expectedFileEx = () => mapReduceFileService.ProcessFile(new InputFile() { FullFilename = "fakefile.zip"});
-            var expectedFileOk = mapReduceFileService.ProcessFile(fileStub.Object);
+            var actualIpValid = mapReduceFileService.ValidateIPv4("127.0.0.1");
+            var actualLineIp = mapReduceFileService.ParseLine(fileLine[0]);
+            Action actualFileEx = () => mapReduceFileService.ProcessFile(new InputFile() { FullFilename = "fakefile.zip"});
+            var actualFileOk = mapReduceFileService.ProcessFile(fileStub.Object);
 
             // Assert
-            Assert.True(expectedIpValid);
-            Assert.Equal("10.20.30.40", expectedLineIp.Ip);
-            expectedLineIp.Should().BeEquivalentTo(new TemperatureFileLine() { Ip = "10.20.30.40" });
-            Assert.Throws<FileNotFoundException>(expectedFileEx);
-            expectedFileOk.Should().BeEquivalentTo(new SortedDictionary<float, int>() { { 22.5F, 2 } });
+            Assert.True(actualIpValid);
+            Assert.Equal("10.20.30.40", actualLineIp.Ip);
+            actualLineIp.Should().BeEquivalentTo(new TemperatureFileLine() { Ip = "10.20.30.40" });
+            Assert.Throws<FileNotFoundException>(actualFileEx);
+            actualFileOk.Should().BeEquivalentTo(new SortedDictionary<float, int>() { { 22.5F, 2 } });
         }
     }
 }

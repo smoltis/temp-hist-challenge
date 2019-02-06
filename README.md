@@ -45,7 +45,7 @@ Redis server is used as an external caching service.
 Though the source code compiles into a dotnet core executable and can be used separately 
 under OS of choice the Application and the Redis server are supposed to run as a whole in Docker environment.
 
-To set up containers in Docker the `docker-compose.yml` file and docker-compose tool were used.
+To set up containers in Docker the `docker-compose.yml` file and docker-compose tool are used.
 
 *Prerequisites to run the application from the command line:*
 
@@ -79,7 +79,7 @@ CreateWeatherHistogram --input ./ttd_test_data.csv --output ./histogram.tsv --nu
 * Specify the input file name and path and the file name of the output histogram file accordingly.
 * The output file destination path is relative to the input file path. 
 * The input file path will become a mapped volume for Docker container to avoid data transferring from host to container environments.
-* Redis server will be started in **AOF Persistence mode**. The database cache file will be written to the host machine into 
+* Redis server will be started in **AOF Persistence mode**. The database cache file will be written to the host machine into *data/appendonly.aof* file.
 
 ## Running the aplication in Visual Studio on the machine with Redis in Docker container (Debug mode) on OSX/Windows 10
 

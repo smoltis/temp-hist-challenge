@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using TemperatureHistogramChallenge.Models;
 using IpStack;
-using IpStack.Models;
 
 namespace TemperatureHistogramChallenge.Services
 {
@@ -15,7 +14,6 @@ namespace TemperatureHistogramChallenge.Services
         private readonly IConnectionMultiplexer redis;
         private readonly IApiStats apiStats;
         private readonly ILogger<IpStackService> logger;
-
         IpStackClient client;
 
         public IpStackService(IConfiguration configuration, IConnectionMultiplexer redis, IApiStats apiStats, ILogger<IpStackService> logger)
@@ -80,7 +78,7 @@ namespace TemperatureHistogramChallenge.Services
         {
             try
             {
-                IpAddressDetails location = client.GetIpAddressDetails(ip);
+                var location = client.GetIpAddressDetails(ip);
                 var result = string.Join(',', location.Latitude.ToString(), location.Longitude.ToString());
                 if (string.IsNullOrEmpty(result) || result == "0,0")
                 {
