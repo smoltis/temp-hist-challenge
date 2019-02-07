@@ -1,44 +1,56 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using TemperatureHistogramChallenge.Models;
 using Xunit;
+using TemperatureHistogramChallenge.Models;
 
 namespace CreateWeatherHistogram.Tests
 {
-    public class ApiStats_Tests
+    public class ApiStatsAdd
     {
         private readonly ApiStats _apiStats;
-        public ApiStats_Tests()
+
+        public ApiStatsAdd()
         {
             _apiStats = new ApiStats();
         }
+
         [Fact]
-        public void ApiStats_AddToDictionary1_Returns1()
+        public void WhenAddSingleReason_StatsShouldContainOneItem()
         {
-            // Arrange, Act
-            _apiStats.Add(ApiFailReason.MissingData);
-            // Assert
-            Assert.Single(_apiStats.FailReasons);
+            //arrange
+            var reason = ApiFailReason.MissingData;
+
+            //act
+            _apiStats.Add(reason);
+
+            //assert
+            Assert.Equal(1, _apiStats.TotalCalls);
         }
+
         [Fact]
-        public void ApiStats_SummaryOutput_Lines2Events4()
+        public void WhenAddThreeSameReasons_StatsShouldContainOneItem()
         {
-            //Arrannge
-            var expected = new List<string> 
-            { 
-                "MissingData: 3 (75.00%)",
-                "ConnectionError: 1 (25.00%)" 
-            };
+            //arrange
+            var reason = ApiFailReason.Other;
+
+            //act
+            _apiStats.Add(reason);
+            _apiStats.Add(reason);
+            _apiStats.Add(reason);
+
+            //assert
+            Assert.Equal(3, _apiStats.TotalCalls);
+        }
+
+        [Fact]
+        public void WhenAddEachReasonOnce_StatsShouldContainTreeItems()
+        {
+            //arrange
+            //act
             _apiStats.Add(ApiFailReason.MissingData);
-            _apiStats.Add(ApiFailReason.MissingData);
-            _apiStats.Add(ApiFailReason.MissingData);
-            _apiStats.Add(ApiFailReason.ConnectionError);
-            // Act
-            var actual = _apiStats.Summary();
-            // Assert
-            for(int i=0; i<2; i++)
-                Assert.Equal(expected[i], actual[i]);
+            _apiStats.Add(ApiFailReason.Other);
+            _apiStats.Add(ApiFailReason.FailedLookup);
+
+            //assert
+            Assert.Equal(3, _apiStats.TotalCalls);
         }
     }
 }

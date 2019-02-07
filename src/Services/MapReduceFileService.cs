@@ -1,31 +1,27 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using StackExchange.Redis;
 using TemperatureHistogramChallenge.Models;
 
 namespace TemperatureHistogramChallenge.Services
 {
     public class MapReduceFileService : IInputFileService
     {
-        private readonly ILogger<MapReduceFileService> logger;
-        private readonly ILocationService locationService;
-        private readonly IWeatherService weatherService;
-        private readonly IApiStats apiStats;
+        private readonly ILogger<MapReduceFileService> _logger;
+        private readonly ILocationService _locationService;
+        private readonly IWeatherService _weatherService;
+        private readonly IApiStats _apiStats;
 
-        public MapReduceFileService(ILogger<MapReduceFileService> logger, 
-            ILocationService locationService, 
-            IWeatherService weatherService,
-            IApiStats apiStats)
+        public MapReduceFileService(ILogger<MapReduceFileService> logger, ILocationService locationService, 
+            IWeatherService weatherService, IApiStats apiStats)
         {
-            this.logger = logger;
-            this.locationService = locationService;
-            this.weatherService = weatherService;
-            this.apiStats = apiStats;
+            _logger = logger;
+            _locationService = locationService;
+            _weatherService = weatherService;
+            _apiStats = apiStats;
         }
 
         public IDictionary<float, int> ProcessFile(IInputFile input)
@@ -33,13 +29,13 @@ namespace TemperatureHistogramChallenge.Services
             var globalTemperatureData = new SortedDictionary<float, int>();
 
             var lines = input.ReadAllLines(input.FullFilename);
-            logger.LogDebug($"Read {lines.LongLength} lines from the file");
+            _logger.LogDebug($"Read {lines.LongLength} lines from the file");
             Parallel.ForEach(lines,
                 new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
                 // Initializer:  create task-local storage:
                 () => new Dictionary<float, int>(),
                 // Loop-body: mapping results into the local storage
-                (line, _, localTempData) => { return Map(line, localTempData); },
+                (line, _, localTempData) => Map(line, localTempData).Result,
                 // Finalizer: reduce(merge) individual local storage into global storage
                 (localDict) => Reduce(localDict, globalTemperatureData)
             );
@@ -66,46 +62,51 @@ namespace TemperatureHistogramChallenge.Services
             }
         }
 
-        private Dictionary<float, int> Map(string line, Dictionary<float, int> localTempData)
+        private async Task<Dictionary<float, int>> Map(string line, Dictionary<float, int> localTempData)
         {
             var tempLine = ParseLine(line);
             if (tempLine == null)
             {
-                apiStats.Add(ApiFailReason.MissingData);
+                _apiStats.Add(ApiFailReason.MissingData);
                 return localTempData;
             }
             try
             {
-                logger.LogDebug($"Read from file {tempLine.Ip}");
-
                 // get locations and weather forecast here to save memory
-                var weatherAtLocationTask = locationService.Run(tempLine.Ip)
-                    .ContinueWith(t => { return weatherService.WeatherForecast(t.Result).Result; }
-                        ,TaskContinuationOptions.OnlyOnRanToCompletion);
+                _logger.LogDebug($"Read from file {tempLine.Ip}");
 
-                    var tKey = weatherAtLocationTask.Result;
-                    
-                    if (!localTempData.ContainsKey(tKey))
-                    {
-                        localTempData[tKey] = 1;
-                    }
-                    else
-                    {
-                        localTempData[tKey]++;
-                    }
+                var weatherAtLocationTask = await _locationService.Run(tempLine.Ip)
+                    .ContinueWith(async t => await _weatherService.WeatherForecast(await t),TaskContinuationOptions.OnlyOnRanToCompletion);
+
+                var tKey = await weatherAtLocationTask;
+
+                if (!localTempData.ContainsKey(tKey))
+                {
+                    localTempData[tKey] = 1;
+                }
+                else
+                {
+                    localTempData[tKey]++;
+                }
+
+            }
+            catch (FeedException ex)
+            {
+                _apiStats.Add(ApiFailReason.FailedLookup);
+                _logger.LogError(ex, "Exception: ");
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Exception: ");
-                apiStats.Add(ApiFailReason.FailedApiLookup);
+                _apiStats.Add(ApiFailReason.Other);
+                _logger.LogError(ex, "Exception: ");
             }
+
             return localTempData;
         }
 
         public bool ValidateIPv4(string ipString)
         {
-            if (ipString.Count(c => c == '.') != 3) return false;
-            return IPAddress.TryParse(ipString, out var address);
+            return ipString.Count(c => c == '.') == 3 && IPAddress.TryParse(ipString, out _);
         }
 
         public TemperatureFileLine ParseLine(string line)
@@ -115,15 +116,15 @@ namespace TemperatureHistogramChallenge.Services
             if (columns.Length < 24)
                 return null;
 
-            var ipAddr = columns[23].Trim().Replace(" ",string.Empty);
+            var ipAddress = columns[23].Trim().Replace(" ",string.Empty);
 
-            if (!ValidateIPv4(ipAddr))
+            if (!ValidateIPv4(ipAddress))
                 return null;
 
             return 
                 new TemperatureFileLine()
                 {
-                    Ip = ipAddr
+                    Ip = ipAddress
                 };
         }
     }

@@ -1,5 +1,6 @@
 ﻿using System;
-using IpStack.Models;
+using System.Threading.Tasks;
+using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -10,10 +11,10 @@ using Xunit;
 
 namespace CreateWeatherHistogram.Tests
 {
-    public class IpStackService_Tests
+    public class IpStackServiceTests
     {
         [Fact]
-        public void IpStackService_TestService()
+        public async void IpStackService_TestService()
         {
             // Arrange
             var logger = new Mock<ILogger<IpStackService>>();
@@ -30,13 +31,13 @@ namespace CreateWeatherHistogram.Tests
             var apiStats = new Mock<IApiStats>();
             apiStats.Setup(x => x.Add(It.IsAny<ApiFailReason>()));
 
-            var ipStackService = new IpStackService(configuration.Object, redis.Object, apiStats.Object, logger.Object);
+            var ipStackService = new IpStackService(configuration.Object, redis.Object, logger.Object);
 
             // Act
-            var t = ipStackService.Run("10.20.30.40");
+            var task = ipStackService.Run("10.20.30.40");
 
             // Assert
-            Assert.ThrowsAsync<AggregateException>( () => t);
+            await Assert.ThrowsAsync<ApplicationException>( () => task);
 
         }
 

@@ -1,63 +1,56 @@
 ﻿using System;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
-using TemperatureHistogramChallenge.Models;
-using StackExchange.Redis;
-using Microsoft.Extensions.Logging;
 using System.Globalization;
 using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using StackExchange.Redis;
+using TemperatureHistogramChallenge.Models;
 
 namespace TemperatureHistogramChallenge.Services
 {
     public class OpenWeatherMapService : IWeatherService
     {
-        private static HttpClient httpClient = new HttpClient();
-        private static string appkey = "";
-        private readonly IConfiguration configuration;
-        private readonly IConnectionMultiplexer redis;
-        private readonly IApiStats apiStats;
-        private readonly ILogger<OpenWeatherMapService> logger;
-        private readonly string tempScale;
+        private readonly IConnectionMultiplexer _redis;
+        private readonly ILogger<OpenWeatherMapService> _logger;
 
-        public OpenWeatherMapService(IConfiguration configuration, IConnectionMultiplexer redis, IApiStats apiStats, ILogger<OpenWeatherMapService> logger)
+        private readonly string _tempScale;
+        private readonly string _apiKey;
+
+        public OpenWeatherMapService(
+            IConfiguration configuration, IConnectionMultiplexer redis,
+            ILogger<OpenWeatherMapService> logger)
         {
-            httpClient.BaseAddress = new Uri("http://api.openweathermap.org/data/2.5/forecast");
-            httpClient.Timeout = new TimeSpan(0, 0, 5);
-            httpClient.DefaultRequestHeaders.Clear();
-            httpClient.DefaultRequestHeaders.Accept.Add(
-                new MediaTypeWithQualityHeaderValue("application/json"));
-            appkey = configuration["openWeatherMapsApiKey"];
-            this.configuration = configuration;
-            this.redis = redis;
-            this.apiStats = apiStats;
-            this.logger = logger;
-            this.tempScale = configuration["tempScale"];
+            _redis = redis;
+            _logger = logger;
+            _tempScale = configuration["tempScale"];
+            _apiKey = configuration["openWeatherMapsApiKey"];
         }
-
 
         public async Task<float> WeatherForecast(string location)
         {
             float result;
 
-            IDatabase cache = redis.GetDatabase();
+            IDatabase cache = _redis.GetDatabase();
 
-            var cachedResult = await CacheLookup($"owm_{tempScale}_{location}", cache);
+            var cachedResult = await CacheLookup($"owm_{_tempScale}_{location}", cache);
 
             if (string.IsNullOrEmpty(cachedResult))
             {
                 result = await GetResource(location);
+
                 // delay of 2 seconds to keep within free tier limit 60 req/min
                 await Task.Delay(2000);
-                await PutToCache($"owm_{tempScale}_{location}", result, cache);
+
+                await PutToCache($"owm_{_tempScale}_{location}", result, cache);
             }
             else
             {
-                logger.LogDebug("OpenWeatherMap cache hit");
+                _logger.LogDebug("OpenWeatherMap cache hit");
                 result = float.Parse(cachedResult, CultureInfo.InvariantCulture.NumberFormat);
             }
+
             return result;
         }
 
@@ -65,68 +58,87 @@ namespace TemperatureHistogramChallenge.Services
         {
             try
             {
-                TimeSpan untilMidnight = DateTime.Today.AddDays(1.0) - DateTime.Now;
+                TimeSpan untilMidnight = DateTime.Today.AddDays(1) - DateTime.Now;
                 await cache.StringSetAsync(key, value, untilMidnight);
             }
             catch (RedisException ex)
             {
-                logger.LogWarning(ex, "Redis exception: ");
+                _logger.LogWarning(ex, "Redis exception: ");
             }
         }
 
         private async Task<string> CacheLookup(string key, IDatabase cache)
         {
-            string cachedResult = "";
+            string cachedResult = string.Empty;
+
             try
             {
                 cachedResult = await cache.StringGetAsync(key);
             }
             catch (RedisException ex)
             {
-                logger.LogWarning(ex, "Redis exception: ");
+                _logger.LogWarning(ex, "Redis exception: ");
             }
+
             return cachedResult;
         }
 
         private async Task<float> GetResource(string location)
         {
+            var retValue = float.NaN;
+
+            IWeatherDataProvider dataProvider = new WeatherDataProvider();
+
             try
             {
-                var geoCoord = location.Split(',');
-                if (geoCoord.Length != 2)
-                {
-                    throw new Exception("OpenWeatherMapService invalid location format");
-                }
-                var locationParam = $"?lat={location.Split(',')[0]}&lon={location.Split(',')[1]}";
-                var req = $"{locationParam}&APPID={appkey}&units={tempScale}";
-                var response = await httpClient.GetAsync(req);
-                response.EnsureSuccessStatusCode();
-                var content = await response.Content.ReadAsStringAsync();
+                string req = CreateRequest(location);
+                var content = await dataProvider.GetAsync(req);
+
                 var weather = JsonConvert.DeserializeObject<OpenWeatherMapResponseDto>(content);
+
                 if (weather == null)
                 {
-                    throw new Exception("OpenWeatherMapService unrecognised location coordinates");
+                    _logger.LogWarning($"Weather deserialization failed, content: {content}");
+                    throw new ApplicationException("OpenWeatherMapService unrecognized location coordinates");
                 }
-                // make sure the weather forecast is for tomorrow
-                Int32 unixTimestamp = (Int32)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
-                var t = weather.list.FirstOrDefault(_ => _.dt >= unixTimestamp);
-                if (t is null)
-                {
-                    throw new Exception("OpenWeatherMapService forecast not found");
-                }
-                return t.main.temp;
 
+                // make sure the weather forecast is for tomorrow
+                int unixTimestamp = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+                var timestamp = weather.list.FirstOrDefault(_ => _.dt >= unixTimestamp);
+
+                if (timestamp is null)
+                {
+                    throw new ApplicationException("OpenWeatherMapService forecast not found");
+                }
+
+                retValue = timestamp.main.temp;
             }
-            catch (HttpRequestException e)
+            catch (FeedException e)
             {
-                if (e.Message == "Device not configured")
-                    apiStats.Add(ApiFailReason.ConnectionError);
+                _logger.LogError(e, "Error in OpenEatherMapService: ");
                 throw;
             }
-            catch (Exception)
+            catch(JsonSerializationException e)
             {
-                throw;
+                _logger.LogError($"Deserialization Error: {e.Message}");
             }
+
+            return retValue;
+        }
+
+        private string CreateRequest(string location)
+        {
+            var geoCoords = location.Split(',');
+
+            if (geoCoords.Length != 2)
+            {
+                throw new ArgumentException(nameof(location), "OpenWeatherMapService invalid location format");
+            }
+
+            var locationParam = "http://api.openweathermap.org/data/2.5/forecast";
+            locationParam += $"?lat={geoCoords[0]}&lon={geoCoords[1]}";
+            var req = $"{locationParam}&APPID={_apiKey}&units={_tempScale}";
+            return req;
         }
     }
 }

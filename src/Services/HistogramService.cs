@@ -6,44 +6,45 @@ using TemperatureHistogramChallenge.Models;
 
 namespace TemperatureHistogramChallenge.Services
 {
-    class HistogramService : IHistogramService
+    public class HistogramService : IHistogramService
     {
-        private readonly IInputFileService inputFileService;
-        private readonly ILogger logger;
-        private readonly IOutputFileService outputFileService;
-        private readonly IApiStats apiStats;
+        private readonly IInputFileService _inputFileService;
+        private readonly ILogger _logger;
+        private readonly IOutputFileService _outputFileService;
+        private readonly IApiStats _apiStats;
 
         public HistogramService(IInputFileService inputFileService, ILogger<HistogramService> logger, IOutputFileService outputFileService, IApiStats apiStats)
         {
-            this.inputFileService = inputFileService;
-            this.logger = logger;
-            this.outputFileService = outputFileService;
-            this.apiStats = apiStats;
+            _inputFileService = inputFileService;
+            _logger = logger;
+            _outputFileService = outputFileService;
+            _apiStats = apiStats;
         }
+
         public void Create(string input, string output, int buckets)
         {
             try
             {
-                var temperatureData = inputFileService.ProcessFile(new InputFile() { FullFilename = input});
+                var temperatureData = _inputFileService.ProcessFile(new InputFile() { FullFilename = input});
 
-                logger.LogDebug($"Total T {temperatureData.Values.Sum()}, unique T: {temperatureData.Count}");
+                _logger.LogDebug($"Total T {temperatureData.Values.Sum()}, unique T: {temperatureData.Count}");
 
                 var histogram = temperatureData.Bucketize(buckets);
 
-                logger.LogInformation(string.Join(Environment.NewLine, apiStats.Summary()));
+                _logger.LogInformation(string.Join(Environment.NewLine, _apiStats.Summary()));
 
                 if (histogram.Count > 0)
                 {
-                    outputFileService.SaveFile(histogram, output);
-                    logger.LogInformation("Done!");
+                    _outputFileService.SaveFile(histogram, output);
+                    _logger.LogInformation("Done!");
                 }
                 else
                 {
-                    logger.LogWarning("Nothing to save. Check input file, quality of data and connectivity to the Internet.");
+                    _logger.LogWarning("Nothing to save. Check input file, quality of data and connectivity to the Internet.");
                 }
             } catch (Exception ex)
             {
-                logger.LogError(ex, "Exception: ");
+                _logger.LogError(ex, "Exception: ");
             }
 
         }

@@ -4,6 +4,10 @@
     <TargetFramework>netcoreapp2.2</TargetFramework>
 
     <IsPackable>false</IsPackable>
+
+    <AssemblyVersion>1.0.19038.18414</AssemblyVersion>
+
+    <FileVersion>1.0.19038.18414</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>

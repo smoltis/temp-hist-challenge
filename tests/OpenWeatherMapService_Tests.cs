@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Net.Http;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -10,10 +10,10 @@ using Xunit;
 
 namespace CreateWeatherHistogram.Tests
 {
-    public class OpenWeatherMapService_Tests
+    public class OpenWeatherMapServiceTests
     {
         [Fact]
-        public void OpenWeatherMapService_TestService()
+        public async void OpenWeatherMapService_TestService()
         {
             var logger = new Mock<ILogger<OpenWeatherMapService>>();
 
@@ -29,14 +29,14 @@ namespace CreateWeatherHistogram.Tests
             var apiStats = new Mock<IApiStats>();
             apiStats.Setup(x => x.Add(It.IsAny<ApiFailReason>()));
 
-            var owmService = new OpenWeatherMapService(configuration.Object, redis.Object, apiStats.Object, logger.Object);
+            var owmService = new OpenWeatherMapService(configuration.Object, redis.Object, logger.Object);
 
             // Act
-            var t = owmService.WeatherForecast("someFakelocation");
-            var owmService1 = new OpenWeatherMapService(configuration.Object, redis.Object, apiStats.Object, logger.Object);
+            var act = owmService.WeatherForecast("someFakelocation");
+            var openWeatherMapService = new OpenWeatherMapService(configuration.Object, redis.Object, logger.Object);
 
             // Assert
-            Assert.ThrowsAsync<AggregateException>(() => t);
+            await Assert.ThrowsAsync<ArgumentException>( () => act);
         }
     }
 }

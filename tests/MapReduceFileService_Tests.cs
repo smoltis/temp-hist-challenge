@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -11,7 +12,7 @@ using System.Collections.Generic;
 
 namespace CreateWeatherHistogram.Tests
 {
-    public class MapReduceFileService_Tests
+    public class MapReduceFileServiceTests
     {
         [Fact]
         public void MapReduceFileService_TestService()
@@ -48,14 +49,14 @@ namespace CreateWeatherHistogram.Tests
             // Act
             var actualIpValid = mapReduceFileService.ValidateIPv4("127.0.0.1");
             var actualLineIp = mapReduceFileService.ParseLine(fileLine[0]);
-            Action actualFileEx = () => mapReduceFileService.ProcessFile(new InputFile() { FullFilename = "fakefile.zip"});
+            IDictionary<float, int> ResultsInException() => mapReduceFileService.ProcessFile(new InputFile() {FullFilename = "fakefile.zip"});
             var actualFileOk = mapReduceFileService.ProcessFile(fileStub.Object);
 
             // Assert
             Assert.True(actualIpValid);
             Assert.Equal("10.20.30.40", actualLineIp.Ip);
             actualLineIp.Should().BeEquivalentTo(new TemperatureFileLine() { Ip = "10.20.30.40" });
-            Assert.Throws<FileNotFoundException>(actualFileEx);
+            Assert.Throws<FileNotFoundException>((Func<IDictionary<float,int>>) ResultsInException);
             actualFileOk.Should().BeEquivalentTo(new SortedDictionary<float, int>() { { 22.5F, 2 } });
         }
     }

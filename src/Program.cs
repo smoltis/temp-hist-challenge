@@ -17,14 +17,10 @@ namespace TemperatureHistogramChallenge
             var serviceProvider = GetServiceProvider();
 
             var logger = serviceProvider.GetService<ILogger<Program>>();
-            var app = new CommandLineApplication();
-            app.Name = "CreateWeatherHistogram";
+            var app = new CommandLineApplication {Name = "CreateWeatherHistogram"};
             app.HelpOption();
 
-            CommandOption optionInput, optionOutput;
-            CommandOption<int> optionNumBuckets;
-
-            ConfigureCliParameters(app, out optionInput, out optionOutput, out optionNumBuckets);
+            ConfigureCliParameters(app, out var optionInput, out var optionOutput, out var optionNumBuckets);
 
             app.OnExecute(() =>
             {
@@ -32,32 +28,33 @@ namespace TemperatureHistogramChallenge
             });
 
             app.Execute(args);
+            Console.ReadLine();
         }
 
-        private static void ExecutionCallback(ServiceProvider serviceProvider, ILogger<Program> logger, CommandOption optionInput, CommandOption optionOutput, CommandOption<int> optionNumBuckets)
+        private static void ExecutionCallback(IServiceProvider serviceProvider, ILogger logger, CommandOption input, CommandOption output, CommandOption<int> numBuckets)
         {
-            var input = Path.GetFullPath(optionInput.Value());
+            var inputFileFullPath = Path.GetFullPath(input.Value());
 
-            var output = optionOutput.HasValue()
-                ? Path.GetFullPath(optionOutput.Value())
+            var outputFileFullPath = output.HasValue()
+                ? Path.GetFullPath(output.Value())
                 : Path.Combine(Directory.GetCurrentDirectory(), "histogram.tsv");
 
-            var numOfBuckets = optionNumBuckets.HasValue() ? optionNumBuckets.ParsedValue : 1;
+            var buckets = numBuckets.HasValue() ? numBuckets.ParsedValue : 1;
 
-            logger.LogInformation($"Input: {input}{Environment.NewLine}Out: {output}{Environment.NewLine}Buckets: {numOfBuckets}");
+            logger.LogInformation($"Input: {inputFileFullPath}{Environment.NewLine}Out: {outputFileFullPath}{Environment.NewLine}Buckets: {buckets}");
 
-            serviceProvider.GetService<IHistogramService>().Create(input, output, numOfBuckets);
+            serviceProvider.GetService<IHistogramService>().Create(inputFileFullPath, outputFileFullPath, buckets);
         }
 
-        private static void ConfigureCliParameters(CommandLineApplication app, out CommandOption optionInput, out CommandOption optionOutput, out CommandOption<int> optionNumBuckets)
+        private static void ConfigureCliParameters(CommandLineApplication app, out CommandOption input, out CommandOption output, out CommandOption<int> numBuckets)
         {
-            optionInput = app.Option("-i|--input <INPUT>", "Required. Input temperature file",
+            input = app.Option("-i|--input <INPUT>", "Required. Input temperature file",
                     CommandOptionType.SingleValue)
                 .IsRequired()
                 .Accepts(v => v.ExistingFile());
-            optionOutput = app.Option("-o|--output <OUTPUT>", "Output histogram file name. Default: ./histogram.tsv",
+            output = app.Option("-o|--output <OUTPUT>", "Output histogram file name. Default: ./histogram.tsv",
                 CommandOptionType.SingleValue);
-            optionNumBuckets = app.Option<int>("-n|--numOfBuckets <N>",
+            numBuckets = app.Option<int>("-n|--numOfBuckets <N>",
                     "Number of buckets for a temperature histogram", CommandOptionType.SingleValue)
                 .Accepts(o => o.Range(1, 1000));
         }

@@ -4,6 +4,8 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <RootNamespace>TemperatureHistogramChallenge</RootNamespace>
+    <AssemblyVersion>1.0.19038.18362</AssemblyVersion>
+    <FileVersion>1.0.19038.18362</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,6 +23,12 @@
 
   <ItemGroup>
     <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="data\histogram_input">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="data\histogram_input.csv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

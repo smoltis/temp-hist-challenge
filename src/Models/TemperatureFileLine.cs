@@ -1,5 +1,4 @@
-﻿using System;
-
+﻿
 namespace TemperatureHistogramChallenge.Models
 {
     public class TemperatureFileLine
