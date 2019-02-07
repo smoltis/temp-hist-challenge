@@ -28,7 +28,8 @@ namespace TemperatureHistogramChallenge
             });
 
             app.Execute(args);
-            Console.ReadLine();
+            if (Environment.GetEnvironmentVariable("DOTNETCORE_ENVIRONMENT") == "Development")
+                Console.ReadLine();
         }
 
         private static void ExecutionCallback(IServiceProvider serviceProvider, ILogger logger, CommandOption input, CommandOption output, CommandOption<int> numBuckets)
